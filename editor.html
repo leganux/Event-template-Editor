@@ -9,7 +9,7 @@
     <meta name="author" content="">
     <link rel="icon" href="favicon.ico">
     <base href="">
-    <title>VvvebJs</title>
+    <title>Web editor node</title>
     
     <link href="css/editor.css" rel="stylesheet">
   </head>
@@ -65,7 +65,7 @@
 					
 								
 					<div class="btn-group me-3 float-end" role="group">
-					  <button class="btn btn-primary btn-icon" title="Export (Ctrl + E)" id="save-btn" data-vvveb-action="saveAjax" data-vvveb-url="/api/save" data-v-vvveb-shortcut="ctrl+e">
+					  <button class="btn btn-primary btn-icon" title="Export (Ctrl + E)" id="save-btn" data-vvveb-action="saveAjax" data-vvveb-url="api/save" data-v-vvveb-shortcut="ctrl+e">
 
 						<span class="loading d-none">
 						<i class="la la-save"></i>
@@ -1479,7 +1479,7 @@
 <div class="modal fade" id="new-page-modal" tabindex="-1" role="dialog">
   <div class="modal-dialog" role="document">
     
-    <form action="save.php">
+    <form action="/api/save">
 		
     <div class="modal-content">
       <div class="modal-header">
@@ -1603,10 +1603,6 @@ Vvveb.themeBaseUrl = 'demo/landing/';
 <link href="libs/media/media.css" rel="stylesheet">
 <script src="libs/media/media.js"></script>	
 <script src="libs/builder/plugin-media.js"></script>
-<script>
-Vvveb.MediaModal = new MediaModal(true);
-Vvveb.MediaModal.mediaPath = window.mediaPath;
-</script>
 
 <!-- bootstrap colorpicker //uncomment bellow scripts to enable -->
 <!--

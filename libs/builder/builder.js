@@ -990,7 +990,11 @@ Vvveb.Builder = {
 		$("#select-box").hide();
 		
 		self.initCallback = callback;
-		if (Vvveb.Builder.iframe.src != url) Vvveb.Builder.iframe.src = url;
+		if (Vvveb.Builder.iframe.src != url) {
+			Vvveb.Builder.iframe.src = url;
+		} else {
+			if (callback) callback();
+		}
 	},
 	
 /* iframe */
@@ -1813,33 +1817,43 @@ Vvveb.Builder = {
 	getHtml: function(keepHelperAttributes = true) 
 	{
 		var doc = window.FrameDocument;
+		if (!doc) return "";
+		
 		var hasDoctpe = (doc.doctype !== null);
 		var html = "";
 		
-		$("[contenteditable]", doc).removeAttr("contenteditable");
-		$("[spellcheckker]", doc).removeAttr("spellcheckker");
-		
-		$(window).triggerHandler("vvveb.getHtml.before", doc);
-		
-		if (hasDoctpe) html =
-		"<!DOCTYPE "
-         + doc.doctype.name
-         + (doc.doctype.publicId ? ' PUBLIC "' + doc.doctype.publicId + '"' : '')
-         + (!doc.doctype.publicId && doc.doctype.systemId ? ' SYSTEM' : '') 
-         + (doc.doctype.systemId ? ' "' + doc.doctype.systemId + '"' : '')
-         + ">\n";
-          
-         Vvveb.FontsManager.cleanUnusedFonts();
-         
-         html +=  doc.documentElement.outerHTML;
-         html = this.removeHelpers(html, keepHelperAttributes);
-         
-	 $(window).triggerHandler("vvveb.getHtml.after", doc);
-         
-         var filter = $(window).triggerHandler("vvveb.getHtml.filter", html);
-         if (filter) return filter;
-         
-         return html;
+		try {
+			$("[contenteditable]", doc).removeAttr("contenteditable");
+			$("[spellcheckker]", doc).removeAttr("spellcheckker");
+			
+			$(window).triggerHandler("vvveb.getHtml.before", doc);
+			
+			if (hasDoctpe) html =
+			"<!DOCTYPE "
+			 + doc.doctype.name
+			 + (doc.doctype.publicId ? ' PUBLIC "' + doc.doctype.publicId + '"' : '')
+			 + (!doc.doctype.publicId && doc.doctype.systemId ? ' SYSTEM' : '') 
+			 + (doc.doctype.systemId ? ' "' + doc.doctype.systemId + '"' : '')
+			 + ">\n";
+			  
+			 Vvveb.FontsManager.cleanUnusedFonts();
+			 
+			 // Asegurarse de que documentElement existe antes de intentar obtener su HTML
+			 if (doc.documentElement) {
+				 html += doc.documentElement.outerHTML;
+				 html = this.removeHelpers(html, keepHelperAttributes);
+			 }
+			 
+			 $(window).triggerHandler("vvveb.getHtml.after", doc);
+			 
+			 var filter = $(window).triggerHandler("vvveb.getHtml.filter", html);
+			 if (filter) return filter;
+			 
+			 return html;
+		} catch (e) {
+			console.error("Error getting HTML:", e);
+			return "";
+		}
 	},
 	
 	setHtml: function(html) 
@@ -1876,28 +1890,66 @@ Vvveb.Builder = {
 		}
 	},
 	
-	saveAjax: function(fileName, startTemplateUrl, callback, saveUrl)
-	{
+	saveAjax: async function(fileName, startTemplateUrl, callback, saveUrl) {
 		var data = {};
-		data["file"] = (fileName && fileName != "") ? fileName : Vvveb.FileManager.getCurrentFileName();
+		var currentFileName = Vvveb.FileManager.getCurrentFileName();
+		data["file"] = (fileName && fileName != "") ? fileName : currentFileName;
+		
+		if (!data["file"]) {
+			displayToast("bg-danger", "Filename is empty!");
+			return;
+		}
+		
 		data["startTemplateUrl"] = startTemplateUrl;
-		if (!startTemplateUrl || startTemplateUrl == null)
-		{
-			data["html"] = this.getHtml();
+		try {
+			let iframe = document.getElementById('iframe1');
+			if (!iframe) {
+				throw new Error("Editor iframe not found!");
+			}
+			let html = iframe.contentDocument ? iframe.contentDocument.documentElement.innerHTML : null;
+			if (!html) {
+				throw new Error("No HTML content found!");
+			}
+			if (!html) {
+				displayToast("bg-danger", "No HTML content found!");
+				return;
+			}
+			data["html"] = html;
+		} catch (e) {
+			console.error("Error getting HTML:", e);
+			displayToast("bg-danger", "Error getting HTML content!");
+			return;
 		}
 
-		return $.ajax({
-			type: "POST",
-			url: saveUrl,//set your server side save script url
-			data: data,
-			cache: false,
-		}).done(function (data) {
-				if (callback) callback(data);
+		console.log('Saving file:', data.file);
+		console.log('HTML length:', data.html.length);
+
+		try {
+			const response = await fetch(saveUrl, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(data)
+			});
+
+			const responseData = await response.json();
+
+			if (response.ok) {
+				if (callback) callback(responseData);
 				Vvveb.Undo.reset();
-			$("#top-panel .save-btn").attr("disabled", "true");
-		}).fail(function (data) {
-				alert(data.responseText);
-		});					
+				$("#top-panel .save-btn").attr("disabled", "true");
+				displayToast("bg-success", "File saved successfully!");
+			} else {
+				throw new Error(responseData.message || 'Error saving file');
+			}
+
+			return responseData;
+		} catch (error) {
+			console.error("Save failed:", error);
+			displayToast("bg-danger", error.message || "Error saving file!");
+			throw error;
+		}
 	},
 	
 	setDesignerMode: function(designerMode = false)
@@ -2018,7 +2070,7 @@ Vvveb.Gui = {
 		$(".loading", btn).toggleClass("d-none");
 		$(".button-text", btn).toggleClass("d-none");
 		
-		return Vvveb.Builder.saveAjax(url, null, null, saveUrl).done(function (data, text) {
+		return Vvveb.Builder.saveAjax(url, null, null, '/api/save').then(function (data) {
 			/*
 			//use modal to show save status
 			var messageModal = new bootstrap.Modal(document.getElementById('message-modal'), {
@@ -2038,9 +2090,9 @@ Vvveb.Gui = {
 				bg = "bg-danger";
 			}
 			displayToast(bg, data.message ?? data);
-		}, saveUrl).fail(function (data, text, errorThrown) {
+		}).catch(function (error) {
 			displayToast("bg-danger", "Error saving!");
-		}, saveUrl).always(function (data) {
+		}, saveUrl).finally(function () {
 			$(".loading", btn).toggleClass("d-none");
 			$(".button-text", btn).toggleClass("d-none");
 		});
@@ -2740,37 +2792,39 @@ Vvveb.SectionList = {
 	},
 
 	dragEnd: function (e) {
-
 		if (dragover) {
 			var parent = selected.parentNode;
 			var selectedNode = $(selected).data("node");
-			var replaceNode = $(dragover).data("node");
+			if (selectedNode) {
+				var replaceNode = $(dragover).data("node");
 
-			if ((dragover.offsetTop > selected.offsetTop)) {
-				//replace section item list
-				parent.insertBefore(selected, dragover.nextElementSibling);
-				//replace section
-				replaceNode.parentNode.insertBefore(selectedNode, replaceNode.nextElementSibling);
-			} else {
-				//replace section item list
-				parent.insertBefore(selected, dragover);
-				//replace section
-				replaceNode.parentNode.insertBefore(selectedNode, replaceNode);
+				if ((dragover.offsetTop > selected.offsetTop)) {
+					//replace section item list
+					parent.insertBefore(selected, dragover.nextElementSibling);
+					//replace section
+					replaceNode.parentNode.insertBefore(selectedNode, replaceNode.nextElementSibling);
+				} else {
+					//replace section item list
+					parent.insertBefore(selected, dragover);
+					//replace section
+					replaceNode.parentNode.insertBefore(selectedNode, replaceNode);
+				}
+				
+				dragover.classList.remove("drag-over");
+				
+				var node = selectedNode;
+				
+				this.dragMoveMutation = {
+					type: 'move',
+					target: node,
+					oldParent: node.parentNode,
+					oldNextSibling: node.nextSibling
+				};
 			}
-			
-			dragover.classList.remove("drag-over");
-			
-			var node = selectedNode.get(0);
-			
-			self.dragMoveMutation = {type: 'move', 
-								target: node,
-								oldParent: node.parentNode,
-								oldNextSibling: node.nextSibling};
-											
 		}
 
-		selected = null
-		dragover = null
+		selected = null;
+		dragover = null;
 	},
 
 	dragStart: function (e) {
@@ -2980,6 +3034,16 @@ Vvveb.FileManager = {
             folder = folder ? folder + '/': ''; 
             return folder + this.pages[this.currentPage]['file'];
         }
+        
+        // Si no hay página seleccionada, buscar la primera página disponible
+        for (var page in this.pages) {
+            var folder = this.pages[page]['folder'];
+            folder = folder ? folder + '/': '';
+            return folder + this.pages[page]['file'];
+        }
+        
+        // Si no hay páginas, usar index.html
+        return 'index.html';
 	},
 	
 	reloadCurrentPage: function() {

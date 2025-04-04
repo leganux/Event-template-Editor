@@ -34,45 +34,107 @@ app.get('/', (req, res) => {
 // API para guardar archivos
 app.post('/api/save', (req, res) => {
   const MAX_FILE_LIMIT = 1024 * 1024 * 2; // 2MB
-  const { html, file, action } = req.body;
+  
+  console.log('Save request received:', {
+    action: req.body.action,
+    file: req.body.file,
+    hasHtml: !!req.body.html,
+    startTemplateUrl: req.body.startTemplateUrl
+  });
+
+  const { html, file, action, startTemplateUrl } = req.body;
 
   try {
     if (action === 'rename') {
       // Lógica para renombrar archivo
-      const { oldFile, newFile } = req.body;
-      fs.renameSync(oldFile, newFile);
-      res.send(`File renamed from '${oldFile}' to '${newFile}'`);
+      const { file, newfile, duplicate } = req.body;
+      
+      if (!file || !newfile) {
+        return res.status(500).send('File name not provided!');
+      }
+      
+      if (duplicate) {
+        fs.copyFileSync(file, newfile);
+        res.json({
+          success: true,
+          message: `File duplicated from '${file}' to '${newfile}'`
+        });
+      } else {
+        fs.renameSync(file, newfile);
+        res.json({
+          success: true,
+          message: `File renamed from '${file}' to '${newfile}'`
+        });
+      }
       return;
     }
 
     if (action === 'delete') {
       // Lógica para eliminar archivo
       const { file } = req.body;
+      
+      if (!file) {
+        return res.status(500).send('File name not provided!');
+      }
+      
       fs.unlinkSync(file);
-      res.send(`File deleted '${file}'`);
+      res.json({
+        success: true,
+        message: `File deleted '${file}'`
+      });
       return;
     }
 
     // Guardar archivo
-    if (!html) {
-      return res.status(500).send('HTML content is empty!');
+    let content = '';
+    
+    console.log('Processing content...');
+    try {
+      if (startTemplateUrl) {
+        // Si se proporciona una plantilla inicial, usar su contenido
+        content = fs.readFileSync(startTemplateUrl, 'utf8');
+        console.log('Using template content from:', startTemplateUrl);
+      } else if (html) {
+        content = html.toString();
+        if (content.length > MAX_FILE_LIMIT) {
+          console.warn('HTML content truncated from', content.length, 'to', MAX_FILE_LIMIT);
+          content = content.substring(0, MAX_FILE_LIMIT);
+        }
+      } else {
+        console.error('No content provided');
+        return res.status(500).send('Html content is empty!');
+      }
+
+      if (!file) {
+        console.error('No filename provided');
+        return res.status(500).send('Filename is empty!');
+      }
+    } catch (err) {
+      console.error('Error processing content:', err);
+      return res.status(500).send(`Error processing content: ${err.message}`);
     }
 
-    if (!file) {
-      return res.status(500).send('Filename is empty!');
-    }
-
-    const content = html.substring(0, MAX_FILE_LIMIT);
     const dir = path.dirname(file);
     
     if (!fs.existsSync(dir)) {
+      console.log(`${dir} folder does not exist`);
       fs.mkdirSync(dir, { recursive: true });
+      console.log(`${dir} folder was created`);
     }
 
+    console.log('Writing file:', file);
+    console.log('Content length:', content.length);
+    
     fs.writeFileSync(file, content);
-    res.send(`File saved '${file}'`);
+    console.log('File written successfully');
+    
+    res.json({
+      success: true,
+      message: `File saved '${file}'`
+    });
 
   } catch (error) {
+    console.error('Error in /api/save:', error);
     res.status(500).send(`Error: ${error.message}`);
   }
 });

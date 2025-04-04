@@ -5,6 +5,8 @@ function ucFirst(str) {
 }
 
 let mediaScanUrl = '/api/media';
+let uploadUrl = '/api/upload';
+let saveUrl = '/api/save';
 
 class MediaModal {
 	constructor (modal = true)
@@ -471,7 +473,7 @@ _
 		
 					$.ajax({
 						type: "POST",
-						url: '/api/upload',//set your server side upload script url
+						url: uploadUrl,//set your server side upload script url
 						data: formData,
 						processData: false,
 						contentType: false,
@@ -507,7 +509,7 @@ _
 			if (confirm(`Are you sure you want to delete "${file}"template?`)) {
 				$.ajax({
 					method:"POST",
-					url: '/api/save?action=delete',//set your server side save script url
+					url: saveUrl + '?action=delete',//set your server side save script url
 					data: {file},
 				}).done(function(data) {
 
@@ -539,7 +541,7 @@ _
 			if (newfile) {
 				$.ajax({
 					method:"POST",
-					url: '/api/save?action=rename',//set your server side save script url
+					url: saveUrl + '?action=rename',//set your server side save script url
 					data: {file, newfile},
 				}).done(function(data) {
 
