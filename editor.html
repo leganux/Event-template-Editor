@@ -65,7 +65,7 @@
 					
 								
 					<div class="btn-group me-3 float-end" role="group">
-					  <button class="btn btn-primary btn-icon" title="Export (Ctrl + E)" id="save-btn" data-vvveb-action="saveAjax" data-vvveb-url="save.php" data-v-vvveb-shortcut="ctrl+e">
+					  <button class="btn btn-primary btn-icon" title="Export (Ctrl + E)" id="save-btn" data-vvveb-action="saveAjax" data-vvveb-url="/api/save" data-v-vvveb-shortcut="ctrl+e">
 
 						<span class="loading d-none">
 						<i class="la la-save"></i>
@@ -1595,15 +1595,18 @@
 <script src="libs/builder/inputs.js"></script>	
 
 
-<!-- media gallery -->
-<link href="libs/media/media.css" rel="stylesheet">
 <script>
-window.mediaPath = 'media';
+window.mediaPath = 'media/';
 Vvveb.themeBaseUrl = 'demo/landing/';
 </script>
+<!-- media gallery -->
+<link href="libs/media/media.css" rel="stylesheet">
 <script src="libs/media/media.js"></script>	
-<script src="libs/media/openverse.js"></script>
-<script src="libs/builder/plugin-media.js"></script>	
+<script src="libs/builder/plugin-media.js"></script>
+<script>
+Vvveb.MediaModal = new MediaModal(true);
+Vvveb.MediaModal.mediaPath = window.mediaPath;
+</script>
 
 <!-- bootstrap colorpicker //uncomment bellow scripts to enable -->
 <!--
@@ -1668,8 +1671,8 @@ Unzip the latest ckeditor release zip from https://github.com/ckeditor/ckeditor4
 <script src="libs/autocomplete/jquery.autocomplete.js"></script>	
 
 <script>
-let renameUrl = 'save.php?action=rename';
-let deleteUrl = 'save.php?action=delete';	
+let renameUrl = '/api/save?action=rename';
+let deleteUrl = '/api/save?action=delete';	
 
 let pages = 
 	[
@@ -1703,8 +1706,8 @@ let pages =
 	
 $(function() {
 
-	let firstPage = Object.keys(pages)[0];
-	Vvveb.Builder.init(pages[firstPage]["url"], function() {
+let firstPage = 0;
+Vvveb.Builder.init(pages[firstPage]["url"], function() {
 		//load code after page is loaded here
 	});
 

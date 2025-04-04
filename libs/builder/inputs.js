@@ -468,7 +468,7 @@ var RadioInput = $.extend({}, Input, {
 		if (value && value != "") {
 			$('input', this.element).removeAttr('checked');
 			
-			var input = $("input[value=" + value + "]", this.element);
+			var input = $('input[value="' + value + '"]', this.element);
 			input.attr("checked", "true").prop('checked', true);
 		}
 	},

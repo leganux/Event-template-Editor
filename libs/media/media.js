@@ -4,7 +4,7 @@ function ucFirst(str) {
   return str[0].toUpperCase() + str.slice(1);
 }
 
-let mediaScanUrl = 'scan.php';
+let mediaScanUrl = '/api/media';
 
 class MediaModal {
 	constructor (modal = true)
@@ -103,7 +103,7 @@ class MediaModal {
 		this.filemanager = null;
 		this.breadcrumbs = null;
 		this.fileList = null;
-		this.mediaPath = "/public/media/";
+		this.mediaPath = window.mediaPath;
 		this.type = "single";
 	}
 	
@@ -125,7 +125,7 @@ class MediaModal {
 	
 	save() {
 		
-		let file = $("#MediaModal .files input:checked").eq(0).val();
+		let file = $("#MediaModal input[type='radio']:checked, #MediaModal input[type='checkbox']:checked").eq(0).val();
 		if (this.targetInput) {
 			$(this.targetInput).val(file).trigger("change");
 		}
@@ -190,7 +190,7 @@ class MediaModal {
 		let _this = this;
 
 		// Start by fetching the file data from scan.php with an AJAX request
-		$.get(mediaScanUrl, function(data) {
+		$.post(mediaScanUrl, {}, function(data) {
 		//$.get('/this.filemanager/scan.php', function(data) {
 			
 
@@ -397,11 +397,13 @@ _
 		// Locates a file by path
 
 		searchByPath(dir) {
+			if (!dir) return [];
 			var path = dir.split('/'),
 				demo = this.response,
 				flag = 0;
 
 			for(var i=0;i<path.length;i++){
+				if (!demo || !demo.length) return [];
 				for(var j=0;j<demo.length;j++){
 					if(demo[j].name === path[i]){
 						flag = 1;
@@ -411,8 +413,7 @@ _
 				}
 			}
 
-			//demo = flag ? demo : [];
-			return demo;
+			return demo || [];
 		}
 
 
@@ -470,7 +471,7 @@ _
 		
 					$.ajax({
 						type: "POST",
-						url: 'upload.php',//set your server side upload script url
+						url: '/api/upload',//set your server side upload script url
 						data: formData,
 						processData: false,
 						contentType: false,
@@ -506,7 +507,7 @@ _
 			if (confirm(`Are you sure you want to delete "${file}"template?`)) {
 				$.ajax({
 					method:"POST",
-					url: deleteUrl,//set your server side save script url
+					url: '/api/save?action=delete',//set your server side save script url
 					data: {file},
 				}).done(function(data) {
 
@@ -538,7 +539,7 @@ _
 			if (newfile) {
 				$.ajax({
 					method:"POST",
-					url: renameUrl,//set your server side save script url
+					url: '/api/save?action=rename',//set your server side save script url
 					data: {file, newfile},
 				}).done(function(data) {
 
@@ -595,8 +596,8 @@ _
 				var file = $('<li class="files">\
 						<label class="form-check">\
 						<input type="hidden" value="' +  _this.mediaPath + f.path + '" name="filename[]">\
-						  <input type="' + ((_this.type == "single") ? "radio" : "checkbox") + '" class="form-check-input" value="' + f.path + '" name="file[]" ' + ((selected == "single") ? "checked" : "") + '><span class="form-check-label"></span>\
-						  <div href="#\" class="files">'+icon+'<div class="info"><div class="name">'+ name +'</div><span class="details">'+fileSize+'</span>\
+						  <input type="' + ((_this.type == "single") ? "radio" : "checkbox") + '" class="form-check-input" value="' + f.path + '" name="file[]" ' + ((selected == "single") ? "checked" : "") + '>\
+						  <div class="files">'+icon+'<div class="info"><div class="name">'+ name +'</div><span class="details">'+fileSize+'</span>\
 							' + actions + '\
 							 <div class="preview">\
 								<img src="' + _this.mediaPath + f.path + '">\
